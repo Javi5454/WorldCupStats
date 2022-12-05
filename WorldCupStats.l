@@ -1,5 +1,6 @@
 %option noyywrap
 %option c++
+%option debug
 %{
     #include <iostream>
     #include <vector>
@@ -64,29 +65,29 @@ upper   [A-Z]
 lower   [a-z]
 number  ({digit}+)
 special_char    .
-blank_space     ("\b")
-hyphen  ("\b-\b")
+blank_space     (" ")
+separator       {blank_space}|{blank_space}"\n"|"\n"{blank_space}
+hyphen  (" - ")
 
 day     (("Lunes")|("Martes")|("Miércoles")|("Jueves")|("Viernes")|("Sábado")|("Domingo"))
 month   ("enero"|"febrero"|"marzo"|"abril"|"mayo"|"junio"|"julio"|"agosto"|"septiembre"|"octubre"|"noviembre"|"diciembre")
-date    ({day}"\b"{number}"\bde\b"{month})
+date    ({day}" "{number}" de "{month})
 
-word    (({mayus}|{special_char}){lower}*{special_char}*{lower*})
-comp_word   ({word}("\b"{word})+)
+word    (({upper}|{special_char}){lower}*{special_char}*{lower}*)
+comp_word   ({word}({separator}{word})+)
 string  ({word}|{comp_word})
 
-group   ("/(Grupo\b"{upper}"/)")
-stadium ("/("{string}"/)")
+group   ({separator}"(Grupo "{upper}") "|{separator}*)
+stadium ("("{string}")")
 
 hour    ({number}":"{number}".")
 
 init_date   ("<p><strong>")
 end_date    ("</strong></p>")
-marker_match1  ("<p>")
 marker_match2  ("<br>")
 marker_match3  ("</p>")
-init_match     ({marker_match1}|{marker_match2})
-fin_match      ({marker_match2}|{marker_match3})
+init_match     ({hour})
+end_match      ({marker_match2}|{marker_match3})
 
 %%
 
@@ -95,7 +96,7 @@ fin_match      ({marker_match2}|{marker_match3})
     string delimiter = "<p><strong>";
     unsigned int init_to_cut = delimiter.size();
     delimiter = "</strong></p>";
-    unsigned int end_to_cut = chain.size() - delimiter.size() - init_to_cut;
+    unsigned int end_to_cut = chain.size() - delimiter.size() - init_to_cut + 1;
     string sub_chain = chain.substr(init_to_cut - 1, end_to_cut); //Until the end
 
     int stop1 = sub_chain.find_first_of(" ");
@@ -105,7 +106,92 @@ fin_match      ({marker_match2}|{marker_match3})
     current_date.day = stoi(sub_chain.substr(stop1 + 1, stop2 - stop1 - 1));
 
     stop1 = stop2 + 3; //Add 3 because of "de "
-    current_date.month = months[sub_chain.substr(stop1, -1)];
+    current_date.month = months[sub_chain.substr(stop1 + 1, -1)];
+}
+
+{init_match}{separator}{string}{separator}{number}{hyphen}{string}{separator}{number}{group}{stadium}{end_match} {
+    chain = string(YYText());
+    Team team_to_add;
+    Match match_to_add;
+
+    //Setting the date
+    match_to_add.date = current_date;
+
+    //Getting first team
+    int stop1 = chain.find_first_of(" ");
+    int stop2 = chain.find_first_of(" -"); 
+    string subchain1 = chain.substr(stop1 + 1, stop2 - stop1 - 1);
+
+    stop1 = subchain1.find_first_of(" ");
+
+    match_to_add.team1 = subchain1.substr(0, stop1);
+
+    //Adding team to the array of teams
+    bool add = true;
+
+    for(int i = 0; i < teams.size(); i++){
+        if(teams[i].name == match_to_add.team1){
+            add = false;
+            break;
+        }
+    }
+
+    if(add){
+        team_to_add.name = match_to_add.team1;
+        team_to_add.matches.push_back(match_to_add);
+        teams.push_back(team_to_add);
+    }
+
+    //Getting score of the first team
+    match_to_add.score1 = stoi(subchain1.substr(stop1+1, stop2 - stop1));
+
+    //Getting second team
+    stop1 = chain.find_first_of("-");
+    stop2 = chain.find_first_of("(");
+    subchain1 = chain.substr(stop1 + 2, stop2 - (stop1 + 3));
+ 
+    stop1 = subchain1.find_last_of(" ");
+    match_to_add.team2 = subchain1.substr(0, stop1);
+
+    //Adding team to the array of teams
+    add = true;
+
+    for(int i = 0; i < teams.size(); i++){
+        if(teams[i].name == match_to_add.team2){
+            add = false;
+            break;
+        }
+    }
+
+    if(add){
+        team_to_add.name = match_to_add.team2;
+        team_to_add.matches.push_back(match_to_add);
+        teams.push_back(team_to_add);
+    }
+
+    //Getting score of the second team
+    match_to_add.score2 = stoi(subchain1.substr(stop1+1, stop2 - stop1 - 1));
+
+    //Getting group
+    stop1 = chain.find_first_of("(G");
+
+    if(stop1 != -1){
+        stop2 = chain.find_first_of(")");
+        match_to_add.group = chain.substr(stop1 + 1, stop2 - stop1 - 1);
+    }
+    else{
+        match_to_add.group = ""; //No group phase
+    }
+
+    //Getting stadium
+    stop1 = chain.find_last_of("(");
+    stop2 = chain.find_last_of(")");
+
+    match_to_add.stadium = chain.substr(stop1 + 1, stop2 - stop1 - 1);
+
+    //Adding match to the array
+    matches.push_back(match_to_add);
+
 }
 
 %%
@@ -135,10 +221,10 @@ void print_match(Match match){
 
 //Main function
 int main(int argc, char *argv[]){
-    char choosen = '0';
+    char choosen = '0'; 
 
     //Downloading html file
-    system("curl https://www.pagina12.com.ar/503908-el-fixture-completo-de-qatar-2022-con-los-resultados-de-todo -o data.html");
+    //system("curl https://www.pagina12.com.ar/503908-el-fixture-completo-de-qatar-2022-con-los-resultados-de-todo -o data.html");
 
     yyin.open("data.html");
     if(!yyin){
@@ -151,6 +237,7 @@ int main(int argc, char *argv[]){
     input_strean.yylex();
     system("clear");
 
+
     //Users interaction
     do{
         print_menu();
@@ -160,6 +247,7 @@ int main(int argc, char *argv[]){
             case '1':
                 {
                 cout << "=================== Teams list ===================" << endl;
+                cout << teams.size() << endl;
                 for(int i=0; i < teams.size(); i++){
                     cout << i << ")\t" << teams[i].name << endl;
                 }
@@ -281,7 +369,7 @@ int main(int argc, char *argv[]){
     }while(choosen != '6');
 
     //Removing file
-    system("rm data.html");
+    //system("rm data.html");
 
     return 0;
 }

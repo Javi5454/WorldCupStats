@@ -64,21 +64,22 @@ digit   [0-9]
 upper   [A-Z]
 lower   [a-z]
 number  ({digit}+)
-special_char    .
+upper_accent    ("Á"|"É"|"Í"|"Ó"|"Ú")
+lower_accent    ("á"|"é"|"í"|"ó"|"ú")
 blank_space     (" ")
 separator       {blank_space}|{blank_space}"\n"|"\n"{blank_space}
-hyphen  (" - ")
+hyphen  (" - "|"-"|" -"|" -")
 
 day     (("Lunes")|("Martes")|("Miércoles")|("Jueves")|("Viernes")|("Sábado")|("Domingo"))
 month   ("enero"|"febrero"|"marzo"|"abril"|"mayo"|"junio"|"julio"|"agosto"|"septiembre"|"octubre"|"noviembre"|"diciembre")
 date    ({day}" "{number}" de "{month})
 
-word    (({upper}|{special_char}){lower}*{special_char}*{lower}*)
+word    (({upper}|{upper_accent}|{lower}|{lower_accent})(({lower}*{lower_accent}{lower}*)|{lower}*))
 comp_word   ({word}({separator}{word})+)
 string  ({word}|{comp_word})
 
 group   ({separator}"(Grupo "{upper}") "|{separator}*)
-stadium ("("{string}")")
+stadium ("(Estadio "{string}")"|"(Estadio "{number}+")")
 
 hour    ({number}":"{number}".")
 
@@ -111,6 +112,9 @@ end_match      ({marker_match2}|{marker_match3})
 
 {init_match}{separator}{string}{separator}{number}{hyphen}{string}{separator}{number}{group}{stadium}{end_match} {
     chain = string(YYText());
+    cout << "hola" << endl;
+    cout << chain << endl;
+    cout << "adios" << endl;
     Team team_to_add;
     Match match_to_add;
 
@@ -119,28 +123,11 @@ end_match      ({marker_match2}|{marker_match3})
 
     //Getting first team
     int stop1 = chain.find_first_of(" ");
-    int stop2 = chain.find_first_of(" -"); 
-    string subchain1 = chain.substr(stop1 + 1, stop2 - stop1 - 1);
+    int stop2 = chain.find_first_of("-"); 
+    string subchain1 = chain.substr(stop1 + 1, stop2 - stop1 - 2);
 
-    stop1 = subchain1.find_first_of(" ");
-
+    stop1 = subchain1.find_last_of(" ");
     match_to_add.team1 = subchain1.substr(0, stop1);
-
-    //Adding team to the array of teams
-    bool add = true;
-
-    for(int i = 0; i < teams.size(); i++){
-        if(teams[i].name == match_to_add.team1){
-            add = false;
-            break;
-        }
-    }
-
-    if(add){
-        team_to_add.name = match_to_add.team1;
-        team_to_add.matches.push_back(match_to_add);
-        teams.push_back(team_to_add);
-    }
 
     //Getting score of the first team
     match_to_add.score1 = stoi(subchain1.substr(stop1+1, stop2 - stop1));
@@ -152,22 +139,6 @@ end_match      ({marker_match2}|{marker_match3})
  
     stop1 = subchain1.find_last_of(" ");
     match_to_add.team2 = subchain1.substr(0, stop1);
-
-    //Adding team to the array of teams
-    add = true;
-
-    for(int i = 0; i < teams.size(); i++){
-        if(teams[i].name == match_to_add.team2){
-            add = false;
-            break;
-        }
-    }
-
-    if(add){
-        team_to_add.name = match_to_add.team2;
-        team_to_add.matches.push_back(match_to_add);
-        teams.push_back(team_to_add);
-    }
 
     //Getting score of the second team
     match_to_add.score2 = stoi(subchain1.substr(stop1+1, stop2 - stop1 - 1));
@@ -191,6 +162,38 @@ end_match      ({marker_match2}|{marker_match3})
 
     //Adding match to the array
     matches.push_back(match_to_add);
+
+     //Adding team to the array of teams
+    bool add = true;
+
+    for(int i = 0; i < teams.size(); i++){
+        if(teams[i].name == match_to_add.team1){
+            add = false;
+            break;
+        }
+    }
+
+    if(add){
+        team_to_add.name = match_to_add.team1;
+        team_to_add.matches.push_back(match_to_add);
+        teams.push_back(team_to_add);
+    }
+
+    //Adding second team to the array of teams
+    add = true;
+
+    for(int i = 0; i < teams.size(); i++){
+        if(teams[i].name == match_to_add.team2){
+            add = false;
+            break;
+        }
+    }
+
+    if(add){
+        team_to_add.name = match_to_add.team2;
+        team_to_add.matches.push_back(match_to_add);
+        teams.push_back(team_to_add);
+    }
 
 }
 
@@ -224,7 +227,6 @@ int main(int argc, char *argv[]){
     char choosen = '0'; 
 
     //Downloading html file
-    //system("curl https://www.pagina12.com.ar/503908-el-fixture-completo-de-qatar-2022-con-los-resultados-de-todo -o data.html");
 
     yyin.open("data.html");
     if(!yyin){
@@ -235,7 +237,7 @@ int main(int argc, char *argv[]){
     //Using lex
     yyFlexLexer input_strean(&yyin,0);
     input_strean.yylex();
-    system("clear");
+    /*system("clear");
 
 
     //Users interaction
@@ -247,7 +249,6 @@ int main(int argc, char *argv[]){
             case '1':
                 {
                 cout << "=================== Teams list ===================" << endl;
-                cout << teams.size() << endl;
                 for(int i=0; i < teams.size(); i++){
                     cout << i << ")\t" << teams[i].name << endl;
                 }
@@ -366,10 +367,7 @@ int main(int argc, char *argv[]){
             break;
                 }
         }
-    }while(choosen != '6');
-
-    //Removing file
-    //system("rm data.html");
+    }while(choosen != '6');*/
 
     return 0;
 }

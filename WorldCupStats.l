@@ -8,6 +8,7 @@
     #include <string>
     #include <cstdlib>
     #include <fstream>
+    #include <string>
 
     using namespace std;
 
@@ -62,7 +63,7 @@
 
 digit   [0-9]
 upper   [A-Z]
-lower   [a-z]
+lower   ([a-z]|"ñ"|"Ñ")
 number  ({digit}+)
 upper_accent    ("Á"|"É"|"Í"|"Ó"|"Ú")
 lower_accent    ("á"|"é"|"í"|"ó"|"ú")
@@ -112,9 +113,7 @@ end_match      ({marker_match2}|{marker_match3})
 
 {init_match}{separator}{string}{separator}{number}{hyphen}{string}{separator}{number}{group}{stadium}{end_match} {
     chain = string(YYText());
-    cout << "hola" << endl;
     cout << chain << endl;
-    cout << "adios" << endl;
     Team team_to_add;
     Match match_to_add;
 
@@ -144,7 +143,7 @@ end_match      ({marker_match2}|{marker_match3})
     match_to_add.score2 = stoi(subchain1.substr(stop1+1, stop2 - stop1 - 1));
 
     //Getting group
-    stop1 = chain.find_first_of("(G");
+    stop1 = chain.find("(G");
 
     if(stop1 != -1){
         stop2 = chain.find_first_of(")");
@@ -166,9 +165,12 @@ end_match      ({marker_match2}|{marker_match3})
      //Adding team to the array of teams
     bool add = true;
 
+    cout << "Team1: " << match_to_add.team1 << endl;
+
     for(int i = 0; i < teams.size(); i++){
         if(teams[i].name == match_to_add.team1){
             add = false;
+            teams[i].matches.push_back(match_to_add);
             break;
         }
     }
@@ -177,14 +179,18 @@ end_match      ({marker_match2}|{marker_match3})
         team_to_add.name = match_to_add.team1;
         team_to_add.matches.push_back(match_to_add);
         teams.push_back(team_to_add);
+        team_to_add.matches.clear(); //Deleting this match
     }
 
     //Adding second team to the array of teams
     add = true;
 
+    cout << "Team2: " << match_to_add.team2 << endl;
+
     for(int i = 0; i < teams.size(); i++){
         if(teams[i].name == match_to_add.team2){
             add = false;
+            teams[i].matches.push_back(match_to_add);
             break;
         }
     }
@@ -193,6 +199,7 @@ end_match      ({marker_match2}|{marker_match3})
         team_to_add.name = match_to_add.team2;
         team_to_add.matches.push_back(match_to_add);
         teams.push_back(team_to_add);
+        team_to_add.matches.clear();
     }
 
 }
@@ -215,7 +222,7 @@ void print_menu(){
 void print_match(Match match){
     cout << match.team1 << " " << match.score1 << " - " << match.score2 << " " << match.team2;
 
-    if(match.group != ""){
+    if(match.group != "" | match.group != " "){
         cout << "\t" << match.group;
     }
 
@@ -226,8 +233,6 @@ void print_match(Match match){
 int main(int argc, char *argv[]){
     char choosen = '0'; 
 
-    //Downloading html file
-
     yyin.open("data.html");
     if(!yyin){
         cout << "FATAL ERROR: couldn't get data from main page" << endl;
@@ -237,7 +242,7 @@ int main(int argc, char *argv[]){
     //Using lex
     yyFlexLexer input_strean(&yyin,0);
     input_strean.yylex();
-    /*system("clear");
+    system("clear");
 
 
     //Users interaction
@@ -250,7 +255,7 @@ int main(int argc, char *argv[]){
                 {
                 cout << "=================== Teams list ===================" << endl;
                 for(int i=0; i < teams.size(); i++){
-                    cout << i << ")\t" << teams[i].name << endl;
+                    cout << i+1 << ")\t" << teams[i].name << endl;
                 }
                 cout << endl;
             break;
@@ -260,7 +265,8 @@ int main(int argc, char *argv[]){
                 {
                 cout << "Insert team name (Uppercase sensitive): ";
                 string input;
-                cin >> input;
+                getline(cin, input);
+                getline(cin,input);
 
                 Team team_to_show;
                 bool not_found = true;
@@ -367,7 +373,7 @@ int main(int argc, char *argv[]){
             break;
                 }
         }
-    }while(choosen != '6');*/
+    }while(choosen != '6');
 
     return 0;
 }

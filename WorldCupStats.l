@@ -75,16 +75,16 @@ hyphen  (" - "|"-"|" -"|" -")
 
 day     (("Lunes")|("Martes")|("Miércoles")|("Jueves")|("Viernes")|("Sábado")|("Domingo"))
 month   ("enero"|"febrero"|"marzo"|"abril"|"mayo"|"junio"|"julio"|"agosto"|"septiembre"|"octubre"|"noviembre"|"diciembre")
-date    ({day}" "{number}" de "{month})
+date    ({day}{separator}{number}{separator}"de"{separator}{month})
 
 word    (({upper}|{upper_accent}|{lower}|{lower_accent})(({lower}*{lower_accent}{lower}*)|{lower}*))
 comp_word   ({word}({separator}{word})+)
 string  ({word}|{comp_word})
 
-group   ({separator}"(Grupo "{upper}") "|{separator}*)
-stadium ("(Estadio "{string}")"|"(Estadio "{number}+")")
+group   ({separator}"(Grupo"{separator}{upper}")"{separator}|{separator}*)
+stadium ("(Estadio"{separator}{string}")"|"(Estadio"{separator}{number}+")")
 open_penalties ("(")
-close_penalties (" en penales)")
+close_penalties ({separator}"en penales)")
 
 hour    ({number}":"{number}".")
 
@@ -345,8 +345,8 @@ int main(int argc, char *argv[]){
     }
 
     //Using lex
-    yyFlexLexer input_strean(&yyin,0);
-    input_strean.yylex();
+    yyFlexLexer input_stream(&yyin,0);
+    input_stream.yylex();
     system("clear");
 
 

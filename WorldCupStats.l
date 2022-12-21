@@ -44,6 +44,8 @@
         string team2;
         unsigned int score1; //Int to represent scorings
         unsigned int score2;
+        int penalties1;
+        int penalties2;
         Date date; //Date of the match
         string group; //Group where the match were played. Can be empty
         string stadium; //Where the match has benn played
@@ -81,6 +83,8 @@ string  ({word}|{comp_word})
 
 group   ({separator}"(Grupo "{upper}") "|{separator}*)
 stadium ("(Estadio "{string}")"|"(Estadio "{number}+")")
+open_penalties ("(")
+close_penalties (" en penales)")
 
 hour    ({number}":"{number}".")
 
@@ -113,9 +117,10 @@ end_match      ({marker_match2}|{marker_match3})
 
 {init_match}{separator}{string}{separator}{number}{hyphen}{string}{separator}{number}{group}{stadium}{end_match} {
     chain = string(YYText());
-    cout << chain << endl;
     Team team_to_add;
     Match match_to_add;
+    match_to_add.penalties1 = -1; //Not penalties
+    match_to_add.penalties2 = -1;
 
     //Setting the date
     match_to_add.date = current_date;
@@ -165,7 +170,102 @@ end_match      ({marker_match2}|{marker_match3})
      //Adding team to the array of teams
     bool add = true;
 
-    cout << "Team1: " << match_to_add.team1 << endl;
+    for(int i = 0; i < teams.size(); i++){
+        if(teams[i].name == match_to_add.team1){
+            add = false;
+            teams[i].matches.push_back(match_to_add);
+            break;
+        }
+    }
+
+    if(add){
+        team_to_add.name = match_to_add.team1;
+        team_to_add.matches.push_back(match_to_add);
+        teams.push_back(team_to_add);
+        team_to_add.matches.clear(); //Deleting this match
+    }
+
+    //Adding second team to the array of teams
+    add = true;
+
+    for(int i = 0; i < teams.size(); i++){
+        if(teams[i].name == match_to_add.team2){
+            add = false;
+            teams[i].matches.push_back(match_to_add);
+            break;
+        }
+    }
+
+    if(add){
+        team_to_add.name = match_to_add.team2;
+        team_to_add.matches.push_back(match_to_add);
+        teams.push_back(team_to_add);
+        team_to_add.matches.clear();
+    }
+
+}
+
+{init_match}{separator}{string}{separator}{number}{hyphen}{string}{separator}{number}{group}{stadium}{hyphen}{open_penalties}{string}{separator}{number}{hyphen}{string}{separator}{number}{close_penalties}{end_match} {
+    chain = string(YYText());
+    cout << "Hola" << endl;
+    cout << chain << endl;
+    cout << "adios" << endl;
+    Team team_to_add;
+    Match match_to_add;
+
+    //Setting the date
+    match_to_add.date = current_date;
+
+    //Getting first team
+    int stop1 = chain.find_first_of(" ");
+    int stop2 = chain.find_first_of("-"); 
+    string subchain1 = chain.substr(stop1 + 1, stop2 - stop1 - 2);
+
+    stop1 = subchain1.find_last_of(" ");
+    match_to_add.team1 = subchain1.substr(0, stop1);
+
+    //Getting score of the first team
+    match_to_add.score1 = stoi(subchain1.substr(stop1+1, stop2 - stop1));
+
+    //Getting second team
+    stop1 = chain.find_first_of("-");
+    stop2 = chain.find_first_of("(");
+    subchain1 = chain.substr(stop1 + 2, stop2 - (stop1 + 3));
+ 
+    stop1 = subchain1.find_last_of(" ");
+    match_to_add.team2 = subchain1.substr(0, stop1);
+
+    //Getting score of the second team
+    match_to_add.score2 = stoi(subchain1.substr(stop1+1, stop2 - stop1 - 1));
+
+    //Setting group
+    match_to_add.group = "";
+
+    //Getting stadium
+    stop1 = chain.find("(Estadio");
+    stop2 = chain.find(") -");
+
+    match_to_add.stadium = chain.substr(stop1 + 1, stop2 - stop1 - 1);
+
+    //Looking for penalties
+    stop1 = chain.find("(" + match_to_add.team1);
+    stop2 = chain.find("en penales");
+    subchain1 = chain.substr(stop1 + 1, stop2 - stop1 - 1);
+    
+    stop1 = match_to_add.team1.length();
+    stop2 = subchain1.find(" - ");
+    match_to_add.penalties1 = stoi(subchain1.substr(stop1, stop2 - stop1)); //First team
+
+    stop1 = subchain1.find(match_to_add.team2) + match_to_add.team2.length();
+    stop2 = subchain1.find(" en penales");
+    match_to_add.penalties2 = stoi(subchain1.substr(stop1, stop2 - stop1)); //Second team
+
+
+    //Adding match to the array
+    matches.push_back(match_to_add);
+
+     //Adding team to the array of teams
+    bool add = true;
 
     for(int i = 0; i < teams.size(); i++){
         if(teams[i].name == match_to_add.team1){
@@ -185,8 +285,6 @@ end_match      ({marker_match2}|{marker_match3})
     //Adding second team to the array of teams
     add = true;
 
-    cout << "Team2: " << match_to_add.team2 << endl;
-
     for(int i = 0; i < teams.size(); i++){
         if(teams[i].name == match_to_add.team2){
             add = false;
@@ -201,7 +299,6 @@ end_match      ({marker_match2}|{marker_match3})
         teams.push_back(team_to_add);
         team_to_add.matches.clear();
     }
-
 }
 
 %%
@@ -220,7 +317,15 @@ void print_menu(){
 
 //Function to print match information
 void print_match(Match match){
-    cout << match.team1 << " " << match.score1 << " - " << match.score2 << " " << match.team2;
+    cout << match.team1 << " " << match.score1;
+    if(match.penalties1 != -1){
+        cout << "(" << match.penalties1 << ")";
+    }
+    cout << " - " << match.score2;
+    if(match.penalties2 != -1){
+        cout << "(" << match.penalties2 << ")";
+    }
+    cout << " " << match.team2;
 
     if(match.group != "" | match.group != " "){
         cout << "\t" << match.group;
@@ -301,11 +406,13 @@ int main(int argc, char *argv[]){
                 cin >> month;
 
                 bool printed = false;
+                int j = 1; //For ordered list
 
                 for(int i = 0; i < matches.size(); i++){
                     if(matches[i].date.month == stoi(month)){
                         if(matches[i].date.day == stoi(day)){
-                            cout << i << ")\t";
+                            cout << j << ")\t";
+                            j++;
                             print_match(matches[i]);
                             printed = true;
                         }
